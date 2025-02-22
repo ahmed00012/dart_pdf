@@ -1,19 +1,3 @@
-/*
- * Copyright (C) 2017, David PHAM-VAN <dev.nfet.net@gmail.com>
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 import 'dart:async';
 import 'dart:typed_data';
 
@@ -25,81 +9,78 @@ import 'color.dart';
 class PdfRasterBase {
   /// Create a bitmap image
   const PdfRasterBase(
-    this.width,
-    this.height,
-    this.alpha,
-    this.pixels,
-  );
+      this.width,
+      this.height,
+      this.alpha,
+      this.pixels,
+      );
 
   factory PdfRasterBase.fromImage(im.Image image) {
-    final data = image
-        .convert(format: im.Format.uint8, numChannels: 4, noAnimation: true)
-        .toUint8List();
+    // image: 3.0.2 does not have `convert()`, use getBytes() instead
+    final data = Uint8List.fromList(image.getBytes(format: im.Format.rgba));
     return PdfRasterBase(image.width, image.height, true, data);
   }
 
   factory PdfRasterBase.fromPng(Uint8List png) {
-    final img = im.PngDecoder().decode(png)!;
+    final img = im.decodePng(png)!; // image 3.0.2 uses decodePng instead of PngDecoder
     return PdfRasterBase.fromImage(img);
   }
 
   static im.Image shadowRect(
-    double width,
-    double height,
-    double spreadRadius,
-    double blurRadius,
-    PdfColor color,
-  ) {
+      double width,
+      double height,
+      double spreadRadius,
+      double blurRadius,
+      PdfColor color,
+      ) {
     final shadow = im.Image(
-      width: (width + spreadRadius * 2).round(),
-      height: (height + spreadRadius * 2).round(),
-      format: im.Format.uint8,
-      numChannels: 4,
+      (width + spreadRadius * 2).round(),
+      (height + spreadRadius * 2).round(),
     );
 
     im.fillRect(
       shadow,
-      x1: spreadRadius.round(),
-      y1: spreadRadius.round(),
-      x2: (spreadRadius + width).round(),
-      y2: (spreadRadius + height).round(),
-      color: im.ColorUint8(4)
-        ..r = color.red * 255
-        ..g = color.green * 255
-        ..b = color.blue * 255
-        ..a = color.alpha * 255,
+      spreadRadius.round(),
+      spreadRadius.round(),
+      (spreadRadius + width).round(),
+      (spreadRadius + height).round(),
+      im.getColor(
+        (color.red * 255).toInt(),
+        (color.green * 255).toInt(),
+        (color.blue * 255).toInt(),
+        (color.alpha * 255).toInt(),
+      ),
     );
 
-    return im.gaussianBlur(shadow, radius: blurRadius.round());
+    return im.gaussianBlur(shadow, blurRadius.round());
   }
 
   static im.Image shadowEllipse(
-    double width,
-    double height,
-    double spreadRadius,
-    double blurRadius,
-    PdfColor color,
-  ) {
+      double width,
+      double height,
+      double spreadRadius,
+      double blurRadius,
+      PdfColor color,
+      ) {
     final shadow = im.Image(
-      width: (width + spreadRadius * 2).round(),
-      height: (height + spreadRadius * 2).round(),
-      format: im.Format.uint8,
-      numChannels: 4,
+      (width + spreadRadius * 2).round(),
+      (height + spreadRadius * 2).round(),
     );
 
     im.fillCircle(
       shadow,
-      x: (spreadRadius + width / 2).round(),
-      y: (spreadRadius + height / 2).round(),
-      radius: (width / 2).round(),
-      color: im.ColorUint8(4)
-        ..r = color.red * 255
-        ..g = color.green * 255
-        ..b = color.blue * 255
-        ..a = color.alpha * 255,
+      (spreadRadius + width / 2).round(),
+      (spreadRadius + height / 2).round(),
+      (width / 2).round(),
+      im.getColor(
+        (color.red * 255).toInt(),
+        (color.green * 255).toInt(),
+        (color.blue * 255).toInt(),
+        (color.alpha * 255).toInt(),
+      ),
     );
 
-    return im.gaussianBlur(shadow, radius: blurRadius.round());
+    return im.gaussianBlur(shadow, blurRadius.round());
   }
 
   /// The width of the image
@@ -120,18 +101,11 @@ class PdfRasterBase {
   /// Convert to a PNG image
   Future<Uint8List> toPng() async {
     final img = asImage();
-    return im.PngEncoder().encode(img);
+    return Uint8List.fromList(im.encodePng(img)); // image 3.0.2 uses encodePng directly
   }
 
   /// Returns the image as an [Image] object from the pub:image library
   im.Image asImage() {
-    return im.Image.fromBytes(
-      width: width,
-      height: height,
-      bytes: pixels.buffer,
-      bytesOffset: pixels.offsetInBytes,
-      format: im.Format.uint8,
-      numChannels: 4,
-    );
+    return im.Image.fromBytes(width, height, pixels);
   }
 }
